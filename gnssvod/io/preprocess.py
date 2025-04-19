@@ -103,10 +103,10 @@ def preprocess(filepattern: dict,
     else: 
         tmp_folder = None
     # grab all files matching the patterns
-    filelist = get_filelist(filepattern)
+    stations = get_filelist(filepattern)
     
     out = dict()
-    for item in filelist.items():
+    for item in stations.items():
         station_name = item[0]
         filelist = item[1]
 
