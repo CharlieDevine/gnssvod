@@ -5,11 +5,11 @@ build:
   tools:
     python: "3.11"
 
+sphinx:
+  configuration: docs/source/conf.py
+
 python:
   install:
-    - method: poetry
+    - method: pip
       path: .
     - requirements: docs/requirements.txt
-
-sphinx:
-  configuration: docs/conf.py
