@@ -206,6 +206,8 @@ def read_timestamp(obsLine: str) -> datetime.datetime:
     obsLineItems = obsLine.split()
     # convert second.decimal (float) to second (int) and microseconds (int)
     seconds, microseconds = map(int, obsLineItems[5].split('.'))
+    # convert from units of 1/10 of microseconds to microseconds
+    microseconds = int(microseconds/10)
     datetime_args = [*map(int, obsLineItems[:5]), seconds, microseconds]
     return datetime.datetime(*datetime_args)
 
@@ -290,6 +292,7 @@ def read_obsFile_v2(observationFile,header=False):
         else:
             raise Warning('Observation year is not recognized! | Program stopped!')
         second, microsecond = map(int, obsLineItems[5].split('.'))
+        microsecond = int(microsecond/10)
         epoch = datetime.datetime(year = year, 
                                 month = int(obsLineItems[1]),
                                 day = int(obsLineItems[2]),
@@ -354,11 +357,11 @@ def read_obsFile_v2(observationFile,header=False):
     SVList = [x.replace(' ','0') if x[1]==' ' else x for x in SVList] # replace 'G 1' with 'G01' (etc)
     observation = pd.DataFrame(obsList, index=SVList, columns=columnNames)
     observation.index.name = 'SV'
+    observation['Epoch'] = observation['Epoch'].dt.round("s") # TODO: remove once microsecond support is introduced
     observation['epoch'] = observation.Epoch
-    observation['Epoch'] = observation.Epoch
     observation.set_index('Epoch', append=True, inplace=True)
     observation = observation.reorder_levels(['Epoch', 'SV'])
-
+    oobservation = observation[~observation.index.duplicated(keep="first")] # TODO: remove once microsecond support is introduced
     observation["SYSTEM"] = _system_name(observation.index.get_level_values("SV"))
     #---------------------------------------------------------------------------------------
     fileEpoch = datetime.date(year = epoch.year,
@@ -368,6 +371,7 @@ def read_obsFile_v2(observationFile,header=False):
         interval = 30
     else:
         interval = np.median(np.diff(epochList))
+        interval = int(interval.total_seconds())
     f.close() # close the file
     #---------------------------------------------------------------------------------------
     finish = time.time()
@@ -552,6 +556,7 @@ def read_obsFile_v3(obsFileName,header):
         else:
             # =========================================================================
             epoch_second, epoch_microsecond = map(int, epoch_second.split('.'))
+            epoch_microsecond = int(epoch_microsecond/10)
             epoch = datetime.datetime(year = int(epoch_year), 
                                     month = int(epoch_month),
                                     day = int(epoch_day),
@@ -669,10 +674,11 @@ def read_obsFile_v3(obsFileName,header):
     svList = [x.replace(' ','0') if x[1]==' ' else x for x in svList] # replace 'G 1' with 'G01' (etc)
     obs = pd.DataFrame(obsList, index=svList, columns=columnNames)
     obs.index.name = 'SV'
-    obs['epoch'] = obs.Epoch 
-    obs['Epoch'] = obs.Epoch
+    obs['Epoch'] = obs['Epoch'].dt.round("s") # TODO: remove once microsecond support is introduced
+    obs['epoch'] = obs.Epoch
     obs.set_index('Epoch', append=True, inplace=True)
     obs = obs.reorder_levels(['Epoch', 'SV'])
+    obs = obs[~obs.index.duplicated(keep="first")] # TODO: remove once microsecond support is introduced
     obs["SYSTEM"] = _system_name(obs.index.get_level_values("SV"))
     # =============================================================================
     fileEpoch = datetime.date(year = epoch.year,
@@ -682,6 +688,7 @@ def read_obsFile_v3(obsFileName,header):
         interval = 30
     else:
         interval = np.median(np.diff(epochList))
+        interval = int(interval.total_seconds())
     f.close() # close the file
     # =============================================================================
     finish = time.time()     # Time of finish

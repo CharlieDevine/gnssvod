@@ -1,3 +1,15 @@
+## v2026.02.0
+This version introduces a full documentation on readthedocs, and incorporates some bug fixes.
+### Breaking changes
+- Some functions are now exposed at different levels in the API, which might break some imports.
+- Module `preprocess` was renamed to `preprocessing`. For example, `from gnssvod.io.preprocess import preprocess` must be replaced with `from gnssvod import preprocess` or alternatively `from gnssvod.io.preprocessing import preprocess`.
+### New features
+- A documentation is now available at [https://gnssvod.readthedocs.io](https://gnssvod.readthedocs.io)
+- Microsecond timestamps are now partially supported in the sense that reading RINEX epochs that have less than 1 second intervals will succeed and not cause duplicate records anymore. This could previously happen where GNSS data was recorded at a frequency of 1 second. However, epochs will still be rounded to the nearest second and potential duplicates dropped, in order to avoid situations where observations from different sensors are not paired because of negligible mismatch in timestamps smaller than 1 second. Full support for microsecond timestamps will be added when `gnssvod.gather_stations()` will incorporate a time tolerance option when matching observations from different sites.
+### Other changes
+- Resolve the error caused by duplicated midnight clock and orbit data
+- Make cart2ell errors more explanatory
+
 ## v2025.1.2
 This version focuses mainly on making the package more robust and maintainable in the long run.
 ### Breaking changes

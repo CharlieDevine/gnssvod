@@ -1,18 +1,15 @@
 """
-hemibuild is used to build an equi-angular hemispheric grid
+Tools for building and working with equi-angular hemispheric grids.
+
+The main entry point is :func:`hemibuild`, which constructs a hemispheric
+grid and returns a :class:`Hemi` object containing grid geometry and
+helper methods for mapping GNSS observations onto the grid.
 """
 # ===========================================================
 # ========================= imports =========================
-import os
-import time
-import glob
-import datetime
 import numpy as np
 import pandas as pd
-import xarray as xr
-import multiprocessing
-import pdb
-from matplotlib.patches import Rectangle, Circle
+from matplotlib.patches import Rectangle
 # ===========================================================
 """
 Class definition for hemispheric polar grid object
@@ -20,7 +17,55 @@ Class definition for hemispheric polar grid object
 # ======================================================================
 class Hemi:
     """
-    Hemispheric grid class
+    Hemispheric polar grid object.
+
+    This class stores the geometry of an equi-angular hemispheric grid and
+    provides utilities to work with hemispheric binning of GNSS observations
+    (e.g., assigning measurements to grid cells or generating plotting patches).
+
+    Objects of this class are typically created using :func:`hemibuild`.
+
+    Attributes
+    ----------
+    angular_resolution : float
+        Angular diameter of the zenith cell (degrees).
+
+    ncells : int
+        Total number of grid cells.
+
+    grid : pandas.DataFrame
+        DataFrame describing grid cell geometry. Contain the columns:
+
+        - ``azi`` : cell center azimuth (degrees)
+        - ``ele`` : cell center elevation (degrees)
+        - ``azimin`` / ``azimax`` : azimuthal cell edges (degrees)
+        - ``elemin`` / ``elemax`` : elevation cell edges (degrees)
+
+    coords : pandas.DataFrame
+        Subset of ``grid`` containing cell center coordinates
+        (columns ``azi`` and ``ele``).
+
+    elelims : numpy.ndarray
+        Elevation band limits.
+
+    azilims : list of numpy.ndarray
+        Azimuthal bin edges for each elevation band.
+
+    CellIDs : list of numpy.ndarray
+        Cell IDs per elevation band.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        # Build a hemispheric grid
+        hemi = hemibuild(angular_resolution=10)
+
+        # Access the patches for plotting
+        patches = hemi.patches()
+
+        # Assign grid cell IDs to observation dataframe
+        df_with_cells = hemi.add_CellID(df_obs, aziname='Azimuth', elename='Elevation')
     """
     def __init__(self,angular_resolution,grid,elelims,azilims,CellIDs):
         self.angular_resolution = angular_resolution
@@ -32,9 +77,26 @@ class Hemi:
         self.CellIDs = CellIDs
 
     def patches(self):
-        '''
-        return a series of patches
-        '''
+        """
+        Generate matplotlib patches for hemispheric grid cells.
+
+        Creates rectangular patches in polar projection space that can be
+        used to visualize the hemispheric grid.
+
+        Returns
+        -------
+        pandas.Series
+            Series of :class:`matplotlib.patches.Rectangle` objects indexed
+            by ``CellID``.
+
+        Notes
+        -----
+        Elevation is transformed to polar coordinates using:
+
+        ``r = 90° - elevation``
+
+        This representation is suitable for hemispheric sky plots.
+        """
         def plotpatch(dfrow):
             azimin = np.deg2rad(dfrow.azimin)
             elemax = 90-dfrow.elemax
@@ -50,17 +112,59 @@ class Hemi:
                   elename: str='Elevation',
                   idname: str='CellID',
                   drop: bool=True):
-        '''
-        return the index of the grid cell where each observation belongs
-        '''
+        """
+        Assign hemispheric grid cell IDs to observations.
+
+        Maps each observation to the corresponding hemispheric grid cell
+        based on its azimuth and elevation coordinates.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            Input dataframe containing azimuth and elevation observations.
+
+        aziname : str, optional
+            Name of the azimuth column in ``df`` (degrees).
+            Default is ``'Azimuth'``.
+
+        elename : str, optional
+            Name of the elevation column in ``df`` (degrees).
+            Default is ``'Elevation'``.
+
+        idname : str, optional
+            Name of the output column containing assigned CellIDs.
+            Default is ``'CellID'``.
+
+        drop : bool, optional
+            Controls handling of observations that cannot be assigned
+            to a grid cell:
+
+            - ``True`` (default): rows without CellID are dropped.
+            - ``False``: rows are preserved and assigned ``NaN``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame with an added ``CellID`` column.
+
+            - If ``drop=True`` → only rows with valid CellIDs.
+            - If ``drop=False`` → all rows retained.
+
+        Notes
+        -----
+        - Azimuth values are normalized to the range [0°, 360°].
+        - Observations with missing azimuth or elevation are ignored.
+        - Elevation binning is performed first, followed by azimuthal binning
+          within each elevation band.
+        """
         # check that columns specified by aziname and elename exist in df
         if not aziname in df:
             raise ValueError(f"No column '{aziname}' in the dataframe, indicate which column should be used with azi='ColumnName'")
-        if not aziname in df:
+        if not elename in df:
             raise ValueError(f"No column '{elename}' in the dataframe, indicate which column should be used with ele='ColumnName'")
 
         # extract a subset of the df which we can manipulate 
-        idf = df.loc[:,(aziname,elename)]
+        idf = df.loc[:, (aziname, elename)].copy()
         # remove all data missing azi or ele
         idf = idf[~idf.isnull().any(axis=1)]
         # use modulo to ensure all azimuths are [0-360] (not i.e. -10 or 370)
@@ -109,25 +213,57 @@ class Hemi:
 #-------------------------------------------------------------------------
 def hemibuild(angular_resolution,cutoff=0):
     """
-    Calculates a hemispheric grid where cells have approximately equal angular size. Returns grid properties as dataframe.
-    
+    Build an equi-angular hemispheric grid.
+
+    Constructs a hemispheric partition where grid cells have approximately
+    equal angular area. The grid is organized into concentric elevation
+    rings, each subdivided azimuthally.
+
+    The function returns a :class:`~Hemi` object containing grid geometry
+    and helper utilities.
+
     Parameters
     ----------
-    angular_resolution: numeric
-        defines the diameter of the central (zenith) cell in degrees. 
-        Rings of surrounding cells are build until the cutoff elevation angle is met
-    
-    cutoff: numeric (default 0)
-        defines the elevation angle (in degrees) at which the hemispheric grid stops
-        
+    angular_resolution : float
+        Angular diameter (degrees) of the zenith cell. This defines the
+        target angular size of all grid cells and controls overall grid
+        density.
+
+    cutoff : float, optional
+        Minimum elevation angle (degrees) included in the grid.
+
+        - ``0`` (default) builds a full hemisphere down to the horizon.
+        - Higher values exclude low-elevation cells.
+
     Returns
     -------
-    dataframe of cell IDs with edge and center coordinates
+    :class:`~Hemi`
+        Hemispheric grid object containing:
+
+        - Cell center coordinates
+        - Cell edge geometry
+        - Elevation and azimuth bin definitions
+        - Cell ID mappings
+        - Helper methods (:meth:`~Hemi.patches`, :meth:`~Hemi.add_CellID`)
+
+    Examples
+    --------
+    .. code-block:: python
+
+        # Build a hemispheric grid
+        hemi = hemibuild(angular_resolution=10)
+
+        # Access the patches for plotting
+        patches = hemi.patches()
+
+        # Assign grid cell IDs to observation dataframe
+        df_with_cells = hemi.add_CellID(df_obs, aziname='Azimuth', elename='Elevation')
 
     References
     ----------
-    Beckers, B., & Beckers, P. (2012). A general rule for disk and hemisphere partition into equal-area cells. Computational Geometry, 45(7), 275-283.
-    
+    Beckers, B., & Beckers, P. (2012).
+    *A general rule for disk and hemisphere partition into equal-area cells*.
+    Computational Geometry, 45(7), 275–283.
     """
     # calculate number of rings
     ringlims = np.arange(angular_resolution/2,90-cutoff,angular_resolution)
