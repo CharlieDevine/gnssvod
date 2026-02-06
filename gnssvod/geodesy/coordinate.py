@@ -28,7 +28,34 @@ def _ellipsoid(ellipsoidName):
 
 def ell2cart(lat, lon, h, ellipsoid = 'GRS80'):
     """
-    This function converts geodetic coordinates to 3D cartesian coordinates
+    Convert geodetic coordinates (latitude, longitude, height) to 3D Cartesian coordinates.
+
+    This function transforms geodetic coordinates expressed on a specified ellipsoid
+    into Earth-Centered, Earth-Fixed (ECEF) Cartesian coordinates.
+
+    Parameters
+    ----------
+    lat : float
+        Latitude in degrees.
+    lon : float
+        Longitude in degrees.
+    h : float
+        Ellipsoidal height in meters.
+    ellipsoid : str, optional
+        Ellipsoid to use for the transformation. Default is ``'GRS80'``.
+
+    Returns
+    -------
+    x, y, z : float
+        Cartesian coordinates in meters in an ECEF reference frame.
+
+    Examples
+    --------
+    Build Cartesian coordinates for the Eiffel Tower:
+
+        lat, lon, h = 48.858093, 2.294694, 360
+        x, y, z = ell2cart(lat, lon, h)
+        # x, y, z -> 4201197.602, 168347.839, 4780461.69
     """
     ellipsoid = _ellipsoid(ellipsoid)
     lat = lat * _np.pi / 180 # in radians
@@ -41,7 +68,35 @@ def ell2cart(lat, lon, h, ellipsoid = 'GRS80'):
 
 def cart2ell(x, y, z, ellipsoid = 'GRS80'):
     """
-    This function converts 3D cartesian coordinates to geodetic coordinates
+    Convert 3D Cartesian coordinates to geodetic coordinates (latitude, longitude, height).
+
+    This function transforms ECEF Cartesian coordinates into geodetic coordinates
+    on a specified ellipsoid. Special handling is included for points near the poles.
+
+    Parameters
+    ----------
+    x, y, z : float
+        Cartesian coordinates in meters in an ECEF reference frame.
+    ellipsoid : str, optional
+        Ellipsoid to use for the transformation. Default is ``'GRS80'``.
+
+    Returns
+    -------
+    lat, lon, h : float
+        Geodetic coordinates in degrees and meters: latitude, longitude, height.
+
+    Notes
+    -----
+    - If (x, y) = (0, 0), the longitude is set to 0 by convention and a warning is issued.
+    - The function iteratively solves for latitude when not at the poles.
+
+    Examples
+    --------
+    Convert the Eiffel Tower coordinates back to geodetic:
+
+        x, y, z = 4201197.602, 168347.839, 4780461.69
+        lat, lon, h = cart2ell(x, y, z)
+        # lat, lon, h -> 48.858093, 2.294694, 360
     """
     if (x == 0) and (y == 0):
         # If (x, y, z) == (0, 0, -), the transformation is not well-defined (longitude can be anything 0 < lon < 360)
@@ -93,11 +148,11 @@ def ell2topo(lat, lon, h):
     Convert ellipsoidal coordinates to topocentric coordinates 
     """
     lat, lon = _np.deg2rad(lat), _np.deg2rad(lon) # convert degree to radian
-    east = _np.matrix([[-_np.sin(lon)], [_np.cos(lon)], [0]])
-    north = _np.matrix([[-_np.cos(lon)*_np.sin(lat)],
+    east = _np.array([[-_np.sin(lon)], [_np.cos(lon)], [0]])
+    north = _np.array([[-_np.cos(lon)*_np.sin(lat)],
                         [-_np.sin(lon)*_np.sin(lat)],
                         [ _np.cos(lat)]])
-    up = _np.matrix([[_np.cos(lon)*_np.cos(lat)],
+    up = _np.array([[_np.cos(lon)*_np.cos(lat)],
                         [_np.sin(lon)*_np.cos(lat)],
                         [_np.sin(lat)]])
     return (east, north, up)
