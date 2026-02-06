@@ -8,7 +8,7 @@ This version introduces a full documentation on readthedocs, and incorporates se
 ### Other changes
 - Resolve the error caused by duplicated midnight clock and orbit data
 - Make cart2ell errors more explanatory
-- Resolved the numpy warnings about _np.matrix()
+- Resolved numpy warnings about _np.matrix()
 
 ## v2025.1.2
 This version focuses mainly on making the package more robust and maintainable in the long run.

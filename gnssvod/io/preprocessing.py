@@ -384,7 +384,7 @@ def get_filelist(filepatterns: dict) -> dict:
     ----------
     filepatterns : dict
         Dictionary mapping station names to file search patterns.
-        Each pattern should be a valid glob expression (e.g., '*.O').
+        Each pattern should be a valid glob expression (e.g., '\*.O').
 
     Returns
     -------
@@ -491,7 +491,7 @@ def gather_stations(filepattern: dict,
     outputdir : dict or None, optional
         Dictionary mapping case names to output directories where gathered data
         should be saved. For example::
-        
+
             outputdir={'case1':'/path/where/to/save/data'}
 
         Data are saved as NetCDF files. The dictionary must be consistent with the
