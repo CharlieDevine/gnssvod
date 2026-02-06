@@ -478,7 +478,7 @@ def gather_stations(filepattern: dict,
         If data is saved, the case name is used as the output filename.
 
     timeintervals : None or pandas.IntervalIndex, optional
-        Time interval(s) over which data are sequentially gathere (see example below).
+        Time interval(s) over which data are sequentially gathered (see example below).
         Sequential processing avoids loading and pairing too much data at once.
         If ``outputdir`` is not ``None``, the interval frequency also defines how
         data are saved (e.g. daily files).

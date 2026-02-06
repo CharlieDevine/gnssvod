@@ -30,7 +30,7 @@ def calc_vod(filepattern: str,
     ----------
     filepattern : str
         UNIX-style pattern to locate preprocessed NetCDF files for a case.
-        Example: '/path/to/files/of/case1/*.nc'
+        Example: '/path/to/files/of/case1/\*.nc'
 
     pairings : dict
         Dictionary mapping case names to tuples of station names, indicating
