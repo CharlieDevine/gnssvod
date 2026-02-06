@@ -35,65 +35,107 @@ def preprocess(filepattern: dict,
                approx_position: list[float] = None) -> dict[Any,list[Observation]]:
     """
     Reads and processes structured lists of RINEX observation files.
-    
+
     Parameters
     ----------
-    filepattern: dictionary 
-        Dictionary of station names and UNIX-style patterns to match RINEX 
-        observation files. For example filepattern={'station1':'/path/to/files/of/station1/*O'}
-    
-    orbit: bool (optional) 
-        if orbit=True, will download orbit solutions and calculate Azimuth and Elevation parameters
-        if orbit=False, will not calculate additional gnss parameters
-        
-    interval: string or None (optional)
-        if interval = None, the observations will be returned at the same rate as they were saved
-        if interval = pandas Timedelta or str, this will be used to resample (average) the obervations (e.g. interval="15s")
-    
-    keepvars: list of strings or None (optional)
-        Defines what columns are kept after processing. This can help reduce the size of the saved data.
-        For example keepvars = ['S1','S2','Azimuth','Elevation']
-        If None, no columns are removed
-        
-    outputdir: None, dictionary (optional)
-        A dictionary of station names and folders indicating where to save the preprocessed data
-        For example outputdir={'station1':'/path/where/to/save/preprocessed/data'}
-        Dictionary keys must be the same as in the filepattern argument
-        Data will be saved as a netcdf file, recycling the original file name
-        If this argument is None, data won't be saved
+    filepattern : dict
+        Dictionary mapping station names to UNIX-style patterns matching
+        RINEX observation files.
 
-    encoding: None, str, dict (optional)
-        This argument is used to control compression options when saving netCDF files.
-        If None is passed, no variable encodings are used when saving the file.
-        If string 'default' is passed, will save all SNR, VOD, Azimuth, and Elevation data with some default encoding.
-        Default encoding will be {"dtype": "int16", "scale_factor": 0.1, "zlib": True, "_FillValue":-9999}
-        If a dict is passed, it should contain per-variable encodings that are passed to xr.to_netcdf(). This enables
-        finer customization of the encoding.
+    orbit : bool, optional
+        If True, downloads orbit solutions and calculates Azimuth and
+        Elevation parameters. If False, no additional GNSS parameters are
+        calculated.
 
-    overwrite: bool (optional)
-        If False (default), RINEX files with an existing matching file in the 
-        specified output directory will be skipped entirely
+    interval : str, pandas.Timedelta, or None, optional
+        If None, observations are returned at their original sampling rate.
+        If a string or pandas.Timedelta is provided, observations are resampled
+        (averaged) over that interval.
 
-    outputresult: bool (optional)
-        If True and outputdir is None, observation objects will also be returned as a dictionary.
+    keepvars : list of str or None, optional
+        List of columns to keep after processing, reducing the size of saved data.
+        If None, all columns are kept.
 
-    aux_path: string or None (optional)
-        If orbit is true, some external auxilliary orbit and clock files will be required and automatically downloaded.
-        aux_path sets the directory where these files should be downloaded (or where they may already be found).
-        If None is passed (default), a temporary directory is created and cleaned up if the processing succeeds.
+    outputdir : dict or None, optional
+        Dictionary mapping station names to folders where preprocessed data
+        should be saved. Dictionary keys must match the `filepattern` argument.
+        Data are saved as NetCDF files, reusing the original filenames. If None,
+        data are not saved.
 
-    approx_position: list (optional)
-        Position of the antenna provided as a list of cartesian coordinates [X,Y,Z]. This argument can be used to replace the 
-        approximate position taken from the source RINEX files. 
-        It is mandatory if source RINEX files actually miss the "APPROX POSITION XYZ" information in the header and the 
-        'orbit' option is True. 
-        To convert geographic coordinates (lat, lon, h) to cartesian (X,Y,Z) use gnssvod.geodesy.coordinate.ell2cart(lat,lon,h).
+    overwrite : bool, optional
+        If False (default), files that already exist in the output directory are skipped.
+
+    encoding : None, str, or dict, optional
+        Controls compression and encoding options when saving NetCDF files.
+
+        - None: no variable encodings applied.
+        - "default": applies default encoding to SNR, VOD, Azimuth, and Elevation variables.
+
+          Default encoding is::
+
+              {
+                  "dtype": "int16",
+                  "scale_factor": 0.1,
+                  "zlib": True,
+                  "_FillValue": -9999,
+              }
+
+        - dict: per-variable encodings passed to :meth:`xarray.Dataset.to_netcdf`
+          for fine-grained control.
+
+    outputresult : bool, optional
+        If True and `outputdir` is None, observation objects are returned as a
+        dictionary.
+
+    aux_path : str or None, optional
+        Directory for auxiliary orbit and clock files. If None, a temporary
+        directory is created and cleaned up after processing.
+
+    approx_position : list of float, optional
+        Cartesian coordinates [X, Y, Z] of the antenna. Used if source RINEX
+        files lack "APPROX POSITION XYZ" and `orbit` is True.
+        To convert geographic coordinates (lat, lon, h) to Cartesian use
+        :func:`gnssvod.geodesy.ell2cart`.
 
     Returns
     -------
-    If outputresult = True, returns a dictionary. There is one key per station name and each item contains the GNSS observation object read 
-    from each input RINEX file. For example output={'station1':[gnssvod.io.io.Observation,gnssvod.io.io.Observation,...]}
-    
+    dict or None
+        If `outputresult` is True, returns a dictionary with one key per
+        station name. Each value is a list of GNSS observation objects read
+        from the input RINEX files.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        filepattern = {
+            "station1": "/path/to/files/of/station1/*O",
+            "station2": "/path/to/files/of/station2/*O"
+        }
+
+        interval = "15s"
+
+        keepvars = ["S1*", "S2*", "Azimuth", "Elevation"]
+
+        outputdir = {
+            "station1": "/path/where/to/save/preprocessed/data",
+            "station2": "/path/where/to/save/preprocessed/data"
+        }
+
+        approx_position = [3980581.0, 97.0, 4966824.0]
+
+        output = preprocess(
+            filepattern=filepattern,
+            orbit=True,
+            interval=interval,
+            keepvars=keepvars,
+            outputdir=outputdir,
+            overwrite=False,
+            encoding="default",
+            outputresult=True,
+            aux_path=None,
+            approx_position=approx_position
+        )
     """
     # set up temporary directory if necessary
     if orbit and (aux_path is None):
@@ -192,6 +234,35 @@ def preprocess(filepattern: dict,
 def subset_vars(df: pd.DataFrame,
                 keepvars: list,
                 force_epoch_system: bool = True) -> pd.DataFrame:
+    """
+    Subset an observation DataFrame to keep only selected columns.
+
+    This function filters columns of a pandas DataFrame based on a list
+    of variable patterns. Optionally, it ensures that the 'epoch' and
+    'SYSTEM' columns are always retained, as they are required for
+    computing GNSS-derived quantities such as Azimuth and Elevation.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Observation DataFrame, typically obtained from
+        :attr:`~gnssvod.io.Observation.observation`.
+
+    keepvars : list of str
+        List of variable names or patterns to keep. Pattern matching
+        uses Unix shell-style wildcards (see :func:`fnmatch.filter`).
+
+    force_epoch_system : bool, optional
+        If True (default), always retain the 'epoch' and 'SYSTEM' columns
+        in addition to `keepvars`. Set to False to keep only columns
+        matching `keepvars`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Subset of `df` containing only the requested columns. Rows with
+        all NaNs in the selected columns are dropped.
+    """
     # find all matches for all elements of keepvars
     keepvars = np.concatenate([fnmatch.filter(df.columns.tolist(),x) for x in keepvars])
     # subselect those of the required columns that are present 
@@ -211,6 +282,31 @@ def subset_vars(df: pd.DataFrame,
     return df
 
 def resample_obs(obs: Observation, interval: str) -> Observation:
+    """
+    Temporally resample an observation object.
+
+    This function averages the variables in an :class:`~gnssvod.io.Observation`
+    over a specified time interval while preserving the multi-index
+    (Epoch/SV) structure. The 'epoch' and 'SYSTEM' columns are reconstructed
+    after resampling.
+
+    Parameters
+    ----------
+    obs : Observation
+        Observation object to resample. Data are taken from
+        :attr:`~gnssvod.io.Observation.observation`.
+
+    interval : str
+        Resampling interval as a pandas-compatible frequency string
+        (e.g., '15s', '1min').
+
+    Returns
+    -------
+    Observation
+        The input observation object with the resampled
+        :attr:`~gnssvod.io.Observation.observation` DataFrame and updated
+        :attr:`~gnssvod.io.Observation.interval` (in seconds).
+    """
     # list all variables except SYSTEM and epoch as these are handled differently
     subset = np.setdiff1d(obs.observation.columns.to_list(),['epoch','SYSTEM'])
     # resample those variables using temporal averaging
@@ -224,6 +320,34 @@ def resample_obs(obs: Observation, interval: str) -> Observation:
 def add_azi_ele(obs: Observation, 
                 orbit_data: Union[pd.DataFrame,None] = None, 
                 aux_path: Union[str,None] = None) -> tuple[Observation,pd.DataFrame]:
+    """
+    Adds GNSS azimuth and elevation to an Observation object.
+
+    This function computes Azimuth and Elevation for all measurements in the
+    provided :class:`Observation` object. If necessary, it will download
+    orbit and clock data to the directory specified by ``aux_path``.
+
+    Parameters
+    ----------
+    obs : Observation
+        The GNSS observation object to update.
+    
+    orbit_data : pandas.DataFrame or None, optional
+        Precomputed orbit information. If provided and valid, it will be reused
+        to avoid repeated downloads.
+
+    aux_path : str or None, optional
+        Directory where auxiliary orbit and clock files will be stored or
+        retrieved from. If None, a temporary directory is used.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+
+        - Updated :class:`Observation` object with Azimuth and Elevation columns.
+        - Orbit data used for the computation (may be newly calculated or reused from a previous call).
+    """
     start_time = min(obs.observation.index.get_level_values('Epoch'))
     end_time = max(obs.observation.index.get_level_values('Epoch'))
     
@@ -257,6 +381,60 @@ def add_azi_ele(obs: Observation,
     return obs, orbit_data
 
 def get_filelist(filepatterns: dict) -> dict:
+    """
+    Retrieve lists of files matching UNIX-style patterns for one or more stations.
+
+    Parameters
+    ----------
+    filepatterns : dict
+        Dictionary mapping station names to file search patterns.
+        Each pattern should be a valid glob expression (e.g., '*.O').
+
+    Returns
+    -------
+    dict
+        Dictionary mapping each station name to a list of matching files.
+        If no files match a given pattern, an empty list is returned.
+
+    Examples
+    --------
+    Single station:
+
+    .. code-block:: python
+
+        filepatterns = {
+            "station1": "/path/to/files/station1/*.O"
+        }
+        get_filelist(filepatterns)
+        # Output:
+        # {
+        #     "station1": [
+        #         "/path/to/files/station1/obs1.O",
+        #         "/path/to/files/station1/obs2.O"
+        #     ]
+        # }
+
+    Multiple stations:
+
+    .. code-block:: python
+
+        filepatterns = {
+            "station1": "/path/to/files/station1/*.O",
+            "station2": "/path/to/files/station2/*.O"
+        }
+        get_filelist(filepatterns)
+        # Output:
+        # {
+        #     "station1": [
+        #         "/path/to/files/station1/obs1.O",
+        #         "/path/to/files/station1/obs2.O"
+        #     ],
+        #     "station2": [
+        #         "/path/to/files/station2/obs1.O",
+        #         "/path/to/files/station2/obs2.O"
+        #     ]
+        # }
+    """
     if not isinstance(filepatterns,dict):
         raise Exception(f"Expected the input of get_filelist to be a dictionary, got a {type(filepatterns)} instead")
     filelists = dict()
@@ -282,56 +460,99 @@ def gather_stations(filepattern: dict,
                     encoding: Union[None, Literal['default'], dict] = None,
                     outputresult: bool = False) -> dict[Any,pd.DataFrame]:
     """
-    Merges observations from different sites according to specified pairing rules. The new dataframe will contain 
-    a new index level corresponding to each site, with keys corresponding to station names.
-    
+    Merge observations from different sites according to specified pairing rules.
+
+    The returned dataframe contains a new index level corresponding to each site,
+    with keys given by station names.
+
     Parameters
     ----------
-    filepattern: dictionary 
-        Dictionary of any number station names and UNIX-style patterns to find the preprocessed NetCDF files 
-        observation files. For example filepattern={'station1':'/path/to/files/of/station1/*.nc',
-                                                    'station2':'/path/to/files/of/station2/*.nc'}
-    
-    pairings: dictionary 
-        Dictionary of case names associated to a tuple of station names indicating which stations to gather
-        For example pairings={'case1':('station1','station2')}
-        If data is to be saved, the case name will be taken as filename.
-        
-    timeintervals: None, pd.IntervalIndex (optional)
-        The time interval(s) over which to sequentially gather data.
-        For example timeperiod=pd.interval_range(start=pd.Timestamp('1/1/2018'), periods=8, freq='D') will gather 
-        data for each of the 8 days in timeperiod. Adequate sequential processing will avoid that the script attempts
-        to load and pair too much data at once.
-        If outputdir is not None, the frequency also defines how data is saved (here as daily files).
-        If None, all files that can be found will be used.
-        
-    keepvars: list of strings or None (optional)
-        Defines what columns are kept after the gathering is made. This helps reduce the size of the data when saved.
-        For example keepvars = ['S1','S2','Azimuth','Elevation']
-        If None, no columns are removed
-        
-    outputdir: dictionary (optional)
-        A dictionary of station names and folders indicating where to save the gathered data
-        For example outputdir={'case1':'/path/where/to/save/data'}
-        Data will be saved as a netcdf file, the dictionary has to be consistent with the 'pairings' argument
-        If this argument is None, data will not be saved
+    filepattern : dict
+        Dictionary mapping station names to UNIX-style file patterns used to locate
+        preprocessed NetCDF observation files.
 
-    encoding: None, str, dict (optional)
-        This argument is used to control compression options when saving netCDF files.
-        If None is passed, no variable encodings are used when saving the file.
-        If string 'default' is passed, will save all SNR, Azimuth, and Elevation data with some default encoding.
-        Default encoding will be {"dtype": "int16", "scale_factor": 0.1, "zlib": True, "_FillValue":-9999}
-        If a dict is passed, it should contain per-variable encodings that are passed to xr.to_netcdf(). This enables
-        finer customization of the encoding.
+    pairings : dict
+        Dictionary mapping case names to tuples of station names indicating which
+        stations should be gathered together.
+        If data is saved, the case name is used as the output filename.
 
-    outputresult: bool (optional)
-        If True, observation objects will also be returned as a dictionary
-        
+    timeintervals : None or pandas.IntervalIndex, optional
+        Time interval(s) over which data are sequentially gathered.
+        Sequential processing avoids loading and pairing too much data at once.
+        If ``outputdir`` is not ``None``, the interval frequency also defines how
+        data are saved (e.g. daily files).
+        If ``None``, all available files are used.
+
+    keepvars : list of str or None, optional
+        List of column names to keep after gathering. Helps reduce the size
+        of the dataset when saving. If ``None``, no columns are removed.
+
+    outputdir : dict or None, optional
+        Dictionary mapping case names to output directories where gathered data
+        should be saved.
+        Data are saved as NetCDF files. The dictionary must be consistent with the
+        ``pairings`` argument.
+        If ``None``, data are not saved.
+
+    encoding : None, str, or dict, optional
+        Controls compression and encoding options when saving NetCDF files.
+
+        - ``None``: no variable encodings are applied.
+        - ``"default"``: applies a default encoding to SNR, Azimuth, and Elevation variables.
+          The default encoding is::
+
+              {
+                  "dtype": "int16",
+                  "scale_factor": 0.1,
+                  "zlib": True,
+                  "_FillValue": -9999,
+              }
+
+        - ``dict``: per-variable encodings passed directly to
+          :meth:`xarray.Dataset.to_netcdf`, allowing fine-grained customization.
+
+    outputresult : bool, optional
+        If ``True``, observation objects are also returned as a dictionary.
+
     Returns
     -------
-    If outputresult = True, returns a dictionary. There is one key per case, and the corresponding item is a
-    pd.Dataframe containing the paired data.
-    
+    dict or None
+        If ``outputresult`` is ``True``, returns a dictionary with one key per case.
+        Each value is a :class:`pandas.DataFrame` containing the paired data.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        filepattern = {
+            "station1": "/path/to/files/of/station1/*.nc",
+            "station2": "/path/to/files/of/station2/*.nc",
+        }
+
+        pairings = {
+            "case1": ("station1", "station2")
+        }
+
+        timeintervals = pd.interval_range(
+            start=pd.Timestamp("2018-01-01"),
+            periods=8,
+            freq="D"
+        )
+
+        keepvars = ["S1", "S2", "Azimuth", "Elevation"]
+
+        outputdir = {
+            "case1": "/path/where/to/save/data"
+        }
+
+        result = gather_stations(
+            filepattern=filepattern,
+            pairings=pairings,
+            timeintervals=timeintervals,
+            keepvars=keepvars,
+            outputdir=outputdir,
+            outputresult=True
+        )
     """
     # get all files for all stations
     filenames = get_filelist(filepattern)
