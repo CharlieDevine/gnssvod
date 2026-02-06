@@ -6,6 +6,17 @@ authors = ["Vincent Humphrey <vincent.humphrey@meteoswiss.ch>"]
 license = "MIT"
 readme = "README.md"
 
+[project]
+name = "gnssvod"
+version = "2026.02.0"
+description = "Read GNSS receiver output files and analyse vegetation optical depth (VOD)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name = "Vincent Humphrey", email = "vincent.humphrey@meteoswiss.ch" }
+]
+requires-python = ">=3.9"
+
 [tool.poetry.dependencies]
 python = "^3.9"
 numpy = "^1.25.0"
