@@ -8,7 +8,7 @@ import xarray as xr
 # ======================================================================
 class Observation:
     """
-    GNSS observation object representing a RINEX (*.*o) file.
+    GNSS observation object representing a RINEX (\*.\*o) file.
 
     This class stores the measurements, metadata, and approximate receiver
     position for a single station and observation file. Objects of this class

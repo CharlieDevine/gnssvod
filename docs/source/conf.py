@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 project = 'gnssvod'
 copyright = '2026, Vincent Humphrey'
 author = 'Vincent Humphrey'
-release = '2026.2.1'
+release = '2026.02.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

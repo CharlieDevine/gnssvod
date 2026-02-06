@@ -10,7 +10,8 @@ from gnssvod.position.interpolation import sp3_interp_fast
         (pd.to_datetime('2020-01-01 00:00:00'),pd.to_datetime('2020-01-01 23:00:00')),
         (pd.to_datetime('2022-01-01 00:00:00'),pd.to_datetime('2022-01-01 23:00:00')),
         (pd.to_datetime('2024-01-01 00:00:00'),pd.to_datetime('2024-01-01 23:00:00')),
-        (pd.to_datetime('2025-01-01 00:00:00'),pd.to_datetime('2025-01-01 23:00:00'))
+        (pd.to_datetime('2025-01-01 00:00:00'),pd.to_datetime('2025-01-01 23:00:00')),
+        (pd.to_datetime('2026-01-01 00:00:00'),pd.to_datetime('2026-01-01 23:00:00'))
     ]
 )
 def test_sp3_interp_fast(start_time: pd.Timestamp, end_time: pd.Timestamp, tmp_path) -> None:
