@@ -40,7 +40,9 @@ def preprocess(filepattern: dict,
     ----------
     filepattern : dict
         Dictionary mapping station names to UNIX-style patterns matching
-        RINEX observation files.
+        RINEX observation files. For example::
+        
+            filepattern={'station1':'/path/to/files/of/station1/*O'}
 
     orbit : bool, optional
         If True, downloads orbit solutions and calculates Azimuth and
@@ -80,8 +82,8 @@ def preprocess(filepattern: dict,
                   "_FillValue": -9999,
               }
 
-        - dict: per-variable encodings passed to :meth:`xarray.Dataset.to_netcdf`
-          for fine-grained control.
+        - dict: per-variable encodings that are passed to :meth:`xarray.Dataset.to_netcdf`
+          for fine-grained control by the user.
 
     outputresult : bool, optional
         If True and `outputdir` is None, observation objects are returned as a
@@ -122,19 +124,13 @@ def preprocess(filepattern: dict,
             "station2": "/path/where/to/save/preprocessed/data"
         }
 
-        approx_position = [3980581.0, 97.0, 4966824.0]
-
         output = preprocess(
             filepattern=filepattern,
             orbit=True,
             interval=interval,
             keepvars=keepvars,
-            outputdir=outputdir,
-            overwrite=False,
-            encoding="default",
-            outputresult=True,
-            aux_path=None,
-            approx_position=approx_position
+            outputdir=outputdir
+            outputresult=True
         )
     """
     # set up temporary directory if necessary
@@ -469,15 +465,20 @@ def gather_stations(filepattern: dict,
     ----------
     filepattern : dict
         Dictionary mapping station names to UNIX-style file patterns used to locate
-        preprocessed NetCDF observation files.
+        preprocessed NetCDF observation files. For example::
+
+            filepattern={'station1':'/path/to/files/of/station1/*.nc','station2':'/path/to/files/of/station2/*.nc'}
 
     pairings : dict
         Dictionary mapping case names to tuples of station names indicating which
-        stations should be gathered together.
+        stations should be gathered together. For example::
+
+            pairings={'case1':('station1','station2')}
+
         If data is saved, the case name is used as the output filename.
 
     timeintervals : None or pandas.IntervalIndex, optional
-        Time interval(s) over which data are sequentially gathered.
+        Time interval(s) over which data are sequentially gathere (see example below).
         Sequential processing avoids loading and pairing too much data at once.
         If ``outputdir`` is not ``None``, the interval frequency also defines how
         data are saved (e.g. daily files).
@@ -489,7 +490,10 @@ def gather_stations(filepattern: dict,
 
     outputdir : dict or None, optional
         Dictionary mapping case names to output directories where gathered data
-        should be saved.
+        should be saved. For example::
+        
+            outputdir={'case1':'/path/where/to/save/data'}
+
         Data are saved as NetCDF files. The dictionary must be consistent with the
         ``pairings`` argument.
         If ``None``, data are not saved.

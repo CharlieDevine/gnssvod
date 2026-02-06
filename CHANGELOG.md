@@ -1,7 +1,6 @@
 ## v2026.02.0
 This version introduces a full documentation on readthedocs, and incorporates some bug fixes.
 ### Breaking changes
-- Some functions are now exposed at different levels in the API, which might break some imports.
 - Module `preprocess` was renamed to `preprocessing`. For example, `from gnssvod.io.preprocess import preprocess` must be replaced with `from gnssvod import preprocess` or alternatively `from gnssvod.io.preprocessing import preprocess`.
 ### New features
 - A documentation is now available at [https://gnssvod.readthedocs.io](https://gnssvod.readthedocs.io)
