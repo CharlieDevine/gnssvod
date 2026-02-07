@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gnssvod"
-version = "2026.02.0"
+version = "2026.02.1"
 description = "Read GNSS receiver output files and analyse vegetation optical depth (VOD)"
 authors = ["Vincent Humphrey <vincent.humphrey@meteoswiss.ch>"]
 license = "MIT"
@@ -8,7 +8,7 @@ readme = "README.md"
 
 [project]
 name = "gnssvod"
-version = "2026.02.0"
+version = "2026.02.1"
 description = "Read GNSS receiver output files and analyse vegetation optical depth (VOD)"
 readme = "README.md"
 license = { text = "MIT" }

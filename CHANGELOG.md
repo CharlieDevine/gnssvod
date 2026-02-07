@@ -1,4 +1,4 @@
-## v2026.02.0
+## v2026.2.1
 This version introduces a full documentation on readthedocs, and incorporates several bug fixes.
 ### Breaking changes
 - Module `preprocess` was renamed to `preprocessing`. For example, `from gnssvod.io.preprocess import preprocess` must be replaced with `from gnssvod import preprocess` or alternatively `from gnssvod.io.preprocessing import preprocess`.
