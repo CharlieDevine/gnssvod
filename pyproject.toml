@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gnssvod"
-version = "2026.02.1"
+version = "2026.2.2"
 description = "Read GNSS receiver output files and analyse vegetation optical depth (VOD)"
 authors = ["Vincent Humphrey <vincent.humphrey@meteoswiss.ch>"]
 license = "MIT"
@@ -8,7 +8,7 @@ readme = "README.md"
 
 [project]
 name = "gnssvod"
-version = "2026.02.1"
+version = "2026.2.2"
 description = "Read GNSS receiver output files and analyse vegetation optical depth (VOD)"
 readme = "README.md"
 license = { text = "MIT" }
@@ -22,7 +22,7 @@ python = "^3.9"
 numpy = ">=1.25.0,<3.0.0"
 xarray = {version = ">=2022.12.0", extras = ["io", "parallel"]}
 tqdm = ">=4.60.0"
-hatanaka = ">=2.8.1"
+hatanaka = "==2.8.1"
 pyunpack = ">=0.3"
 matplotlib = ">=3.7,<4.0"
 
