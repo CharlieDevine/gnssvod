@@ -1,3 +1,4 @@
+import pytest
 from gnssvod.analysis.vod_calc import calc_vod
 import pandas as pd
 
@@ -14,3 +15,14 @@ def test_calc_vod() -> None:
     assert(isinstance(out['Laeg'],pd.DataFrame))
     # check shape of table is as expected
     assert(out['Laeg'].shape==(167110,5))
+
+def test_calc_vod_missing_station() -> None:
+    pattern = 'test/nc_paired/*.nc'
+    # Intentionally use a station name that does not exist
+    pairings = {'Laeg': ('CH-Laeg_ref', 'CH-NonExistent')}
+    bands = {'VOD1': ['S1','S1X','S1C']}
+
+    with pytest.raises(ValueError, match="Missing station\\(s\\) .* in loaded data for case 'Laeg'"):
+        calc_vod(filepattern=pattern,
+                 pairings=pairings,
+                 bands=bands)

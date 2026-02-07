@@ -35,7 +35,7 @@ def _sagnac(x_rec, y_rec, z_rec, x_sat, y_sat, z_sat):
 def _azel(x_rec,y_rec,z_rec, x_sat, y_sat, z_sat, distance):
     lat_rec, lon_rec, h_rec = cart2ell(x_rec,y_rec,z_rec)
     east, north, up = ell2topo(lat_rec, lon_rec, h_rec) 
-    unit_p = _np.matrix([(x_sat-x_rec)/distance, 
+    unit_p = _np.array([(x_sat-x_rec)/distance, 
                          (y_sat-y_rec)/distance,
                          (z_sat-z_rec)/distance])
     elevation = []

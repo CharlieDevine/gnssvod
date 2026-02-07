@@ -3,52 +3,86 @@ calc_vod calculates VOD according to specified pairing rules
 """
 # ===========================================================
 # ========================= imports =========================
-import os
-import time
-import glob
-import datetime
 import numpy as np
 import pandas as pd
 import xarray as xr
-import warnings
-from gnssvod.io.preprocess import get_filelist
-import pdb
-#--------------------------------------------------------------------------
+from gnssvod.io.preprocessing import get_filelist
+#-----------------------------------------------------
 #----------------- CALCULATING VOD -------------------
-#-------------------------------------------------------------------------- 
+#-----------------------------------------------------
 
-def calc_vod(filepattern,pairings,bands):
+def calc_vod(filepattern: str,
+             pairings: dict[str, tuple[str, str]],
+             bands: dict[str, list[str]]) -> dict[str, pd.DataFrame]:
     """
-    Combines a list of NetCDF files containing gathered GNSS receiver data, calculates VOD and returns that data.
-    
-    The gathered GNSS receiver data is typically generated with the function 'gather_stations'.
-    
-    VOD is calculated based on pairing rules referring to station names.
-    
+    Calculate Vegetation Optical Depth (VOD) from processed GNSS observations.
+
+    This function combines multiple NetCDF files containing
+    paired GNSS receiver observations (typically generated with
+    :func:`gnssvod.gather_stations`) and computes VOD for user-defined
+    frequency bands.
+
+    Each band corresponds to a list of observation types (e.g., 'S1', 'S1X', 'S1C')
+    across satellites. The function merges all available signals in the band
+    to produce a single VOD estimate per band, increasing coverage.
+
     Parameters
     ----------
-    filepattern: dictionary 
-        a UNIX-style pattern to find the processed NetCDF files.
-        For example filepattern='/path/to/files/of/case1/*.nc'
-    
-    pairings: dictionary
-        A dictionary of pairs of station names indicating first the reference station and second the ground station.
-        For example pairings={'Laeg1':('Laeg2_Twr','Laeg1_Grnd')}
+    filepattern : str
+        UNIX-style pattern to locate preprocessed NetCDF files for a case.
+        Example: '/path/to/files/of/case1/\*.nc'
 
-    bands: dictionary
-        Dictionary of column names to be used for combining different bands
-        For example bands={'VOD_L1':['S1','S1X','S1C']}
-        
+    pairings : dict
+        Dictionary mapping case names to tuples of station names, indicating
+        the reference station and the ground station, respectively.
+        Example: {'Laeg1': ('Laeg2_Twr', 'Laeg1_Grnd')}
+
+    bands : dict
+        Dictionary mapping VOD band names to lists of observation types
+        to merge. For instance, {'VOD_L1': ['S1', 'S1X', 'S1C']}.
+
+        The function combines all matched observation
+        types across satellites.
+
     Returns
     -------
-    Dictionary of case names associated with dataframes containing the output for each case
-    
+    dict
+        Dictionary mapping case names to :class:`pandas.DataFrame` objects.
+        Each DataFrame contains the original measurements along with additional
+        columns for each VOD band.
+
+    Example
+    -------
+    .. code-block:: python
+
+        files = "/path/to/gathered/data/*.nc"
+
+        pairings = {
+            "case1": ("Ref1", "Grnd1"),
+            "case2": ("Ref1", "Grnd2"),
+        }
+
+        bands = {
+            "VOD_L1": ["S1", "S1X"],
+            "VOD_L2": ["S2", "S2X"],
+        }
+
+        vod_results = calc_vod(files, pairings, bands)
     """
     files = get_filelist({'':filepattern})
     # read in all data
     data = [xr.open_mfdataset(x).to_dataframe().dropna(how='all') for x in files['']]
     # concatenate
     data = pd.concat(data)
+    # Check that all stations in pairings exist in the loaded data
+    all_stations = set(data.index.get_level_values('Station'))
+    for case_name, (ref_station, grnd_station) in pairings.items():
+        missing = [s for s in (ref_station, grnd_station) if s not in all_stations]
+        if missing:
+            raise ValueError(
+                f"Missing station(s) {missing} in loaded data for case '{case_name}'. "
+                f"Available stations: {sorted(all_stations)}"
+            )
     # calculate VOD based on pairings
     out = dict()
     for icase in pairings.items():

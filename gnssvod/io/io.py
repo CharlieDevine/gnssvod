@@ -8,7 +8,54 @@ import xarray as xr
 # ======================================================================
 class Observation:
     """
-    Observations class for RINEX Observation (*.*o) files
+    GNSS observation object representing a RINEX (\*.\*o) file.
+
+    This class stores the measurements, metadata, and approximate receiver
+    position for a single station and observation file. Objects of this class
+    are returned by preprocessing functions (e.g., :func:`gnssvod.preprocess`) 
+    and are intended to be used for analysis, subsetting, or conversion to 
+    :class:`xarray.Dataset`.
+
+    Attributes
+    ----------
+    filename : str
+        Name of the source RINEX observation file.
+
+    epoch : datetime.datetime
+        Timestamp corresponding to the last observation in the file.
+
+    observation : pandas.DataFrame
+        DataFrame containing the GNSS measurements. Indexed by
+        Epoch and SV (satellite), with columns corresponding to measurement
+        types (e.g., S1, S2, Azimuth, Elevation).
+
+    approx_position : list of float
+        Approximate receiver position as Cartesian coordinates [X, Y, Z].
+
+    receiver_type : str
+        Receiver type from the RINEX metadata, if available.
+
+    antenna_type : str
+        Antenna type from the RINEX metadata, if available.
+
+    interval : float
+        Measurement interval in seconds.
+
+    receiver_clock : float
+        Receiver clock offset, if provided.
+
+    version : str
+        RINEX file version.
+
+    observation_types : list of str
+        Names of the measurement types present in `observation`.
+
+    Methods
+    -------
+    to_xarray()
+        Converts the observation object into an :class:`xarray.Dataset` with
+        preserved metadata (filename, observation types, epoch, approximate
+        position). Useful for further analysis or exporting to NetCDF.
     """
     def __init__(self, filename=None, epoch=None, observation=None, approx_position=None,
                  receiver_type=None, antenna_type=None, interval=None,

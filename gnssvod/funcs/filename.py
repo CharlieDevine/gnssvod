@@ -42,7 +42,7 @@ def sp3FileName(epoch: datetime.date, product: str ="gfz", dir: Union[str,None] 
         suffix  = '0000_01D_05M_ORB.SP3'
         sp3File = product.upper() + "_" + epoch.strftime('%Y%j') + suffix
     
-    if not dir is None:
+    if  dir is not None:
         sp3File = str(pathlib.Path(dir,sp3File))
 
     return sp3File

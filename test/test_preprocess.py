@@ -1,5 +1,5 @@
 from pathlib import Path
-from gnssvod.io.preprocess import preprocess, gather_stations
+from gnssvod.io.preprocessing import preprocess, gather_stations
 from gnssvod.io.io import Observation
 from gnssvod.geodesy.coordinate import cart2ell, ell2cart
 import pytest
@@ -9,6 +9,8 @@ import pandas as pd
 @pytest.mark.parametrize(
     "filepattern, approx_position",
     [
+        (str(Path("test","rinex","2_11","Reach_Dav1_Grnd-raw_202104282106.21O")),
+         None),
         (str(Path("test","rinex","3_03","ReachLaeg1G_raw_20230801010733.23O")),
          None),
         (str(Path("test","rinex","3_03","*.*O")),

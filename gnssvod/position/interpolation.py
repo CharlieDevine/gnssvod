@@ -15,7 +15,7 @@ from gnssvod.position.position import _observation_picker_by_band
 
 __all__ = ["sp3_interp", "ionosphere_interp"]
 
-def sp3_interp_fast(start_time, end_time, interval=30, poly_degree=16, sp3_product="gfz", clock_product="gfz", aux_path = Union[str, None]):
+def sp3_interp_fast(start_time, end_time, interval=30, poly_degree=16, sp3_product="gfz", clock_product="gfz", aux_path: Union[str, None] = None):
     # add a buffer around start and end time
     start_time_withbuff = start_time-_dt.timedelta(hours=2.1)
     end_time_withbuff = end_time+_dt.timedelta(hours=2.1)
@@ -32,10 +32,18 @@ def sp3_interp_fast(start_time, end_time, interval=30, poly_degree=16, sp3_produ
     #--------------------------------------------------------------------------
     # concatenate data from current day and some buffer before and after
     start = time.time()
+    # sp3
     sp3 = _pd.concat(sp3,axis=0)
-    clock = _pd.concat(clock,axis=0)
-    sp3 = sp3.dropna(subset=["deltaT"]).reorder_levels(["Epoch","SV"])
+    sp3 = sp3.dropna(subset=["deltaT"]).reorder_levels(["Epoch","SV"]).sort_index(level='Epoch')
     sp3 = sp3.loc[(slice(start_time_withbuff,end_time_withbuff))]
+    sp3 = sp3.loc[~sp3.index.duplicated(keep='first')]
+    # clock
+    clock = _pd.concat(clock,axis=0)
+    clock.index.name = 'SV'
+    clock.set_index('Epoch', append=True, inplace=True)
+    clock = clock.reorder_levels(['Epoch', 'SV']).sort_index(level='Epoch')
+    clock = clock.loc[(slice(start_time_withbuff,end_time_withbuff))]
+    clock = clock.loc[~clock.index.duplicated(keep='first')]
     #--------------------------------------------------------------------------
     svList = sp3.index.get_level_values("SV").unique()
     svList = svList.sort_values()
@@ -57,9 +65,6 @@ def sp3_interp_fast(start_time, end_time, interval=30, poly_degree=16, sp3_produ
     sp3_resampled = _pd.concat(sp3_resampled, keys=svList, names=['SV']).reorder_levels(['Epoch', 'SV']).sort_index(level='Epoch')
     #--------------------------------------------------------------------------
     # interpolate clock parameters to the required time interval
-    clock.index.name = 'SV'
-    clock.set_index('Epoch', append=True, inplace=True)
-    clock = clock.reorder_levels(['Epoch', 'SV'])
     svList_clk = clock.index.get_level_values("SV").unique()
     svList_clk = svList_clk.sort_values()
     
@@ -76,72 +81,6 @@ def sp3_interp_fast(start_time, end_time, interval=30, poly_degree=16, sp3_produ
     #--------------------------------------------------------------------------
     # finally, merge orbit and clock information
     sp3matched = sp3_resampled.join(clock_resampled,how='inner')
-    '''
-    # all of this commented script is the former sp3_interp function
-    # it is kept here in case one wants to compare the output of the new implementation above
-    # against the old implementation below
-    #--------------------------------------------------------------------------
-    epoch_values = sp3.index.get_level_values("Epoch").unique()
-    deltaT = epoch_values[1]-epoch_values[0]
-    fitTime = _np.linspace(0, deltaT.seconds*16 , 17)
-    header = ['X', 'Y', 'Z', 'Vx','Vy','Vz']
-    # --------------------------------------------------------------
-    epoch_start = _pd.Timestamp(datetime(epoch_yesterday.year, epoch_yesterday.month, epoch_yesterday.day,23,0,0))
-    epoch_step = timedelta(hours=3)
-    epoch_stop = epoch_start + timedelta(hours=4)
-    dti = _pd.date_range(start = _pd.Timestamp(datetime(epoch_yesterday.year, epoch_yesterday.month, epoch_yesterday.day,23,30,0)),
-                        end   = _pd.Timestamp(datetime( epoch_tomorrow.year,  epoch_tomorrow.month,  epoch_tomorrow.day,2,29,59)),
-                        freq = str(interval) + 'S') 
-    index = _pd.MultiIndex.from_product([svList, dti.tolist()], names=['SV', 'Epoch'])
-    interp_coord = _pd.DataFrame(index= index, columns = header)
-    interp_coord = interp_coord.reorder_levels(['Epoch', 'SV'])
-    interp_coord = interp_coord.sort_index()
-    while True:
-        sp3_temp = sp3.loc[(slice(epoch_start,epoch_stop))].copy()
-        sp3_temp = sp3_temp.reorder_levels(["SV","Epoch"])
-        epoch_interp_List = _np.zeros(shape=(int(10800/interval),6,len(svList)))
-        for svIndex,sv in enumerate(svList):
-            if sv in sp3_temp.index.get_level_values('SV'):
-                epoch_number = len(sp3_temp.loc[sv])
-            else:
-                epoch_number = 0
-            if epoch_number <= poly_degree:
-                print("Warning: Not enough epochs to predict for satellite",sv,"| Epoch Count:",epoch_number, " - Polynomial Degree:",poly_degree)
-                epoch_interp_List[:,:,svIndex] = _np.full(shape=(int(10800/interval),6),fill_value=None)
-                continue
-            if epoch_number != 17:
-                fitTime = [(sp3_temp.loc[sv].index[t]-sp3_temp.loc[sv].index[0]).seconds for t in range(epoch_number)]
-            # Fit sp3 coordinates to 16 deg polynomial
-            fitX = _np.polyfit(fitTime, sp3_temp.loc[sv].X.copy(), deg=poly_degree)
-            fitY = _np.polyfit(fitTime, sp3_temp.loc[sv].Y.copy(), deg=poly_degree)
-            fitZ = _np.polyfit(fitTime, sp3_temp.loc[sv].Z.copy(), deg=poly_degree)
-            # Interpolate coordinates
-            x_interp = coord_interp(fitX, interval) * 1000 # km to m
-            x_velocity = _np.array([(x_interp[i+1]-x_interp[i])/interval if (i+1)<len(x_interp) else 0 for i in range(len(x_interp))])
-            y_interp = coord_interp(fitY, interval) * 1000 # km to m
-            y_velocity = _np.array([(y_interp[i+1]-y_interp[i])/interval if (i+1)<len(y_interp) else 0 for i in range(len(y_interp))])
-            z_interp = coord_interp(fitZ, interval) * 1000 # km to m
-            z_velocity = _np.array([(z_interp[i+1]-z_interp[i])/interval if (i+1)<len(z_interp) else 0 for i in range(len(z_interp))])
-            sv_interp = _np.vstack((x_interp[:-1], y_interp[:-1], z_interp[:-1], x_velocity[:-1], y_velocity[:-1], z_velocity[:-1])).transpose()
-            epoch_interp_List[:,:,svIndex] = sv_interp
-            fitTime = _np.linspace(0, deltaT.seconds*16 , 17) # restore original fitTime in case it has changed!
-        interp_coord.loc[(slice(epoch_start+timedelta(minutes=30),epoch_stop-timedelta(minutes=30,seconds=1))), ('X', 'Y', 'Z', 'Vx', 'Vy', 'Vz')] = epoch_interp_List.transpose(1,0,2).reshape(6,-1).transpose()
-        epoch_start += epoch_step
-        epoch_stop += epoch_step
-        if epoch_start == _pd.Timestamp(datetime(epoch_tomorrow.year, epoch_tomorrow.month, epoch_tomorrow.day,2,0,0)):
-            break
-    # -------------------------------------------------------------------------
-    interp_coord = interp_coord.reorder_levels(['Epoch', 'SV']).astype(float)
-    clock.index.name = 'SV'
-    clock.set_index('Epoch', append=True, inplace=True)
-    clock = clock.reorder_levels(['Epoch', 'SV'])
-    epochMatch = interp_coord.index.intersection(clock.index) 
-    ephemerisMatched = interp_coord.loc[epochMatch] 
-    clockMatched   = clock.loc[epochMatch]
-    sp3matched_old = _pd.concat([ephemerisMatched, clockMatched], axis=1)
-    pdb.set_trace()
-    # -------------------------------------------------------------------------
-    '''
     finish = time.time()
     print("SP3 interpolation is done in", '{0:.2f}'.format(finish-start), 'seconds')
     return sp3matched
