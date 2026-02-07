@@ -12,6 +12,11 @@ Directly install package from PyPI via
 pip install gnssvod
 ```
 
+If you haven't installed numpy yet and an error occurs. First install numpy.
+```
+pip install numpy
+```
+
 ## Documentation
 
 Documentation is available at [https://gnssvod.readthedocs.io](https://gnssvod.readthedocs.io)
